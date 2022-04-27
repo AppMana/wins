@@ -17,7 +17,7 @@ import (
 )
 
 const (
-	processPrefix = "rancher-wins-"
+	processPrefix = ""
 )
 
 type processService struct {
@@ -34,14 +34,8 @@ func (s *processService) Start(ctx context.Context, req *types.ProcessStartReque
 		return nil, status.Errorf(codes.NotFound, "could not found binary: %v", err)
 	}
 
-	// could not change the name of process in windows by default, a trick way is to rename the execution binary with a special prefix
-	binaryPathRN := renameBinary(binaryPath)
-	if err := paths.MoveFile(binaryPath, binaryPathRN); err != nil {
-		return nil, status.Errorf(codes.Internal, "could not rename binary: %v", err)
-	}
-
 	// create process
-	p, err := s.create(ctx, binaryPathRN, req.GetDir(), req.GetArgs(), req.GetEnvs(), toFirewallRules(req.GetExposes()))
+	p, err := s.create(ctx, binaryPath, req.GetDir(), req.GetArgs(), req.GetEnvs(), toFirewallRules(req.GetExposes()))
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "could not create process: %v", err)
 	}
@@ -49,10 +43,6 @@ func (s *processService) Start(ctx context.Context, req *types.ProcessStartReque
 	return &types.ProcessStartResponse{
 		Data: &types.ProcessName{Value: p.name},
 	}, nil
-}
-
-func renameBinary(srcPath string) string {
-	return filepath.Join(filepath.Dir(srcPath), processPrefix+filepath.Base(srcPath))
 }
 
 func toFirewallRules(exposes []*types.ProcessExpose) string {
